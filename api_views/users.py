@@ -22,10 +22,15 @@ def get_all_users():
 
 
 def debug():
+def debug():
+    resp = token_validator(request.headers.get('Authorization'))
+    if "error" in resp:
+        return Response(error_message_helper(resp), 401, mimetype="application/json")
+    user = User.query.filter_by(username=resp['sub']).first()
+    if not user or not user.admin:
+        return Response(error_message_helper("Only Admins may access debug info!"), 403, mimetype="application/json")
     return_value = jsonify({'users': User.get_all_users_debug()})
     return return_value
-
-
 def get_by_username(username):
     if User.get_user(username):
         return Response(str(User.get_user(username)), 200, mimetype="application/json")
@@ -138,16 +143,23 @@ def update_email(username):
                         'email': user.email
                     }
                 }
-                return Response(json.dumps(responseObject), 204, mimetype="application/json")
-            else:
-                return Response(error_message_helper("Please Provide a valid email address."), 400,
-                                mimetype="application/json")
+def update_password(username):
+    request_data = request.get_json()
+    resp = token_validator(request.headers.get('Authorization'))
+    if "error" in resp:
+        return Response(error_message_helper(resp), 401, mimetype="application/json")
+    else:
+        if request_data.get('password'):
+            # Always update only the authenticated user's own password
+            user = User.query.filter_by(username=resp['sub']).first()
+            if not user:
+                return Response(error_message_helper("User Not Found"), 400, mimetype="application/json")
+            user.password = request_data.get('password')
+            db.session.commit()
+            responseObject = {'status': 'success', 'Password': 'Updated.'}
+            return Response(json.dumps(responseObject), 204, mimetype="application/json")
         else:
-            regex = '^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
-            if (re.search(regex, request_data.get('email'))):
-                user.email = request_data.get('email')
-                db.session.commit()
-                responseObject = {
+            return Response(error_message_helper("Malformed Data"), 400, mimetype="application/json")
                     'status': 'success',
                     'data': {
                         'username': user.username,
