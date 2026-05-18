@@ -11,7 +11,9 @@ vuln = int(os.getenv('vulnerable', 1))
 # token alive for how many seconds?
 alive = int(os.getenv('tokentimetolive', 60))
 
-
+if __name__ == '__main__':
+    debug_mode = os.getenv('FLASK_DEBUG', '0') == '1'
+    vuln_app.run(host='127.0.0.1', port=5000, debug=debug_mode)
 # start the app with port 5000 and debug on!
 if __name__ == '__main__':
     vuln_app.run(host='0.0.0.0', port=5000, debug=True)

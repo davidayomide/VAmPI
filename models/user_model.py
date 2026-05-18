@@ -14,9 +14,14 @@ class User(db.Model):
     username = db.Column(db.String(128), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(128), nullable=False)
-    admin = db.Column(db.Boolean, nullable=False, default=False)
+from werkzeug.security import generate_password_hash, check_password_hash
 
-    books = relationship("Book", order_by=Book.id, back_populates="user")
+# In User.__init__:
+self.password = generate_password_hash(password)
+
+# In login_user() comparison:
+if user and check_password_hash(user.password, request_data.get('password')):
+    ...
 
     def __init__(self, username, password, email, admin=False):
         self.username = username
@@ -52,14 +57,19 @@ class User(db.Model):
         except jwt.InvalidTokenError:
             return {'error': 'Invalid token. Please log in again.'}
 
-    def json(self):
-        return {'username': self.username, 'email': self.email}
-
-    def json_debug(self):
-        return {'username': self.username, 'password': self.password, 'email': self.email, 'admin': self.admin}
-
-    @staticmethod
-    def get_all_users():
+@staticmethod
+def get_user(username):
+    if vuln:  # keep the vuln/non-vuln toggle but fix the injection
+        user_query = "SELECT * FROM users WHERE username = :username"
+        query = db.session.execute(text(user_query), {"username": username})
+        ret = query.fetchone()
+        if ret:
+            fin_query = '{"username": "%s", "email": "%s"}' % (ret[1], ret[3])
+        else:
+            fin_query = None
+    else:
+        fin_query = User.query.filter_by(username=username).first()
+    return fin_query
         return [User.json(user) for user in User.query.all()]
 
     @staticmethod
