@@ -54,13 +54,14 @@ class User(db.Model):
 
     def json(self):
         return {'username': self.username, 'email': self.email}
-
-    def json_debug(self):
-        return {'username': self.username, 'password': self.password, 'email': self.email, 'admin': self.admin}
-
-    @staticmethod
-    def get_all_users():
-        return [User.json(user) for user in User.query.all()]
+        if vuln:  # SQLi Injection
+            user_query = text("SELECT * FROM users WHERE username = :username")
+            query = db.session.execute(user_query, {"username": username})
+            ret = query.fetchone()
+            if ret:
+                fin_query = '{"username": "%s", "email": "%s"}' % (ret[1], ret[3])
+            else:
+                fin_query = None
 
     @staticmethod
     def get_all_users_debug():
