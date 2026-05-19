@@ -1,0 +1,25 @@
+# Phrase Security Scanner — deployment gate (personal-account simulation).
+# References the centrally-hosted reusable workflow; this repo holds no gate
+# logic (spec §7.3). One-time setup already done: repo variable SCANNER_URL
+# + secret PHRASE_SCAN_TOKEN.
+name: Security Scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# OPT-IN auto-fix PR (Appendix D-8/D-11 — DEVIATION pending sign-off).
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  security:
+    uses: davidayomide/security-scanner/.github/workflows/security-scan-reusable.yml@main
+    with:
+      runner: ubuntu-latest
+      scanner_url: ${{ vars.SCANNER_URL }}
+      open_fix_pr: true
+    secrets:
+      PHRASE_SCAN_TOKEN: ${{ secrets.PHRASE_SCAN_TOKEN }}
