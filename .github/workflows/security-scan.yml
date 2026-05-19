@@ -1,12 +1,22 @@
-# Phrase Security Scanner — deployment gate (personal-account simulation).
-# References the centrally-hosted reusable workflow; this repo holds no gate
-# logic (spec §7.3). One-time setup already done: repo variable SCANNER_URL
-# + secret PHRASE_SCAN_TOKEN.
+# Phrase Security Scanner — deployment gate + auto-fix-PR-rejection watcher
+# (personal-account simulation). References centrally-hosted reusable
+# workflows; this repo holds no gate logic (spec §7.3). One-time setup
+# already done: repo variable SCANNER_URL + secret PHRASE_SCAN_TOKEN.
+#
+# Bypass (spec BR-002 / Appendix D-1, D-16): to ship past a BLOCKED gate put
+# [security-bypass] in your push commit message; if the scan has Critical
+# findings you MUST also include [justification: your reason]. Every bypass
+# is audit-logged AND alerts the security team's Slack.
+#
+# Rejecting the bot's security/issues/* PR (closing it unmerged) alerts the
+# security team's Slack with who/when/why — state your reason in a PR
+# comment before closing (mandatory).
 name: Security Scan
 
 on:
   push:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 # OPT-IN auto-fix PR (Appendix D-8/D-11 — DEVIATION pending sign-off).
@@ -16,10 +26,24 @@ permissions:
 
 jobs:
   security:
+    # A merely-closed PR is the PR-rejection watcher's job, not a re-scan.
+    if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
     uses: davidayomide/security-scanner/.github/workflows/security-scan-reusable.yml@main
     with:
       runner: ubuntu-latest
       scanner_url: ${{ vars.SCANNER_URL }}
       open_fix_pr: true
+    secrets:
+      PHRASE_SCAN_TOKEN: ${{ secrets.PHRASE_SCAN_TOKEN }}
+
+  # Alerts the security Slack when the bot's auto-fix PR is closed WITHOUT
+  # merging (a "rejection"). Centrally hosted; reuses the same SCANNER_URL
+  # var + PHRASE_SCAN_TOKEN secret.
+  pr_rejection:
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+    uses: davidayomide/security-scanner/.github/workflows/security-pr-rejection-reusable.yml@main
+    with:
+      runner: ubuntu-latest
+      scanner_url: ${{ vars.SCANNER_URL }}
     secrets:
       PHRASE_SCAN_TOKEN: ${{ secrets.PHRASE_SCAN_TOKEN }}
